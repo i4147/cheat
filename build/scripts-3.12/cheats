@@ -1,0 +1,50 @@
+#!python
+from __future__ import annotations
+
+import os
+from pathlib import Path
+
+from cheat.colorize import Colorize
+from cheat.configuration import Configuration
+from cheat.sheet import Sheet
+from cheat.sheets import Sheets
+from cheat.utils import Utils
+from docopt import docopt
+
+if __name__ == "__main__":
+    options: dict = docopt(__doc__, version="cheat 2.5.1")
+
+    config: Configuration = Configuration()
+    config.validate()
+
+    user_dir: Path = Path(config.cheat_user_dir)
+
+    if not user_dir.is_dir():
+        try:
+            user_dir.mkdir(parents=True)
+        except OSError:
+            Utils.die(f"Could not create CHEAT_USER_DIR ({config.cheat_user_dir})")
+
+    if not os.access(user_dir, os.R_OK):
+        Utils.die(f"The CHEAT_USER_DIR ({config.cheat_user_dir}) is not readable")
+    if not os.access(user_dir, os.W_OK):
+        Utils.die(f"The CHEAT_USER_DIR ({config.cheat_user_dir}) is not writeable")
+
+    sheets: Sheets = Sheets(config)
+    sheet: Sheet = Sheet(config, sheets)
+    colorize: Colorize = Colorize(config)
+
+    if options["--directories"]:
+        print("\n".join(sheets.directories()))
+
+    elif options["--list"]:
+        print(sheets.list(), end="")
+
+    elif options["--edit"]:
+        sheet.edit(options["<cheatsheet>"])
+
+    elif options["--search"]:
+        print(colorize.syntax(sheets.search(options["<keyword>"])), end="")
+
+    else:
+        print(colorize.syntax(sheet.read(options["<cheatsheet>"])), end="")
